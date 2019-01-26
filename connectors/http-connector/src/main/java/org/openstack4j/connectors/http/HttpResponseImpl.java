@@ -1,5 +1,10 @@
 package org.openstack4j.connectors.http;
 
+import org.openstack4j.api.exceptions.ClientResponseException;
+import org.openstack4j.core.transport.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -7,14 +12,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-
-import org.openstack4j.api.exceptions.ClientResponseException;
-import org.openstack4j.core.transport.ExecutionOptions;
-import org.openstack4j.core.transport.HttpEntityHandler;
-import org.openstack4j.core.transport.HttpResponse;
-import org.openstack4j.core.transport.ObjectMapperSingleton;
-import org.openstack4j.openstack.logging.Logger;
-import org.openstack4j.openstack.logging.LoggerFactory;
 
 public class HttpResponseImpl implements HttpResponse {
 
@@ -95,7 +92,7 @@ public class HttpResponseImpl implements HttpResponse {
     public InputStream getInputStream() {
     	if (data == null)
     		return null;
-    	
+
         return new ByteArrayInputStream(data);
     }
 
@@ -125,6 +122,7 @@ public class HttpResponseImpl implements HttpResponse {
         Set<String> keys = headers.keySet();
 
         for (String key : keys) {
+            if (key == null) continue; // Ignore null header where HttpURLConnection stores HTTP method info
             List<String> values = headers.get(key);
             for (String value : values) {
                 retHeaders.put(key, value);
@@ -136,10 +134,15 @@ public class HttpResponseImpl implements HttpResponse {
 
     @Override
     public <T> T readEntity(Class<T> typeToReadAs) {
+
+        if (data == null) {
+            return null;
+        }
+
         try {
             return ObjectMapperSingleton.getContext(typeToReadAs).reader(typeToReadAs).readValue(data);
         } catch (Exception e) {
-            LOG.error(e, e.getMessage());
+            LOG.error(e.getMessage(), e);
             throw new ClientResponseException(e.getMessage(), 0, e);
         }
     }
@@ -148,4 +151,9 @@ public class HttpResponseImpl implements HttpResponse {
 		public void close() throws IOException {
 			// Not Implemented - closing handle by HttpCommand
 		}
+
+        @Override
+        public String getContentType() {
+            return header(ClientConstants.HEADER_CONTENT_TYPE);
+        }
 }

@@ -11,6 +11,7 @@ import org.openstack4j.model.compute.QuotaSetUpdate;
 import org.openstack4j.model.compute.SimpleTenantUsage;
 import org.openstack4j.openstack.compute.domain.NovaLimits;
 import org.openstack4j.openstack.compute.domain.NovaQuotaSet;
+import org.openstack4j.openstack.compute.domain.NovaQuotaSet.NovaQuotaSetClass;
 import org.openstack4j.openstack.compute.domain.NovaQuotaSetUpdate.NovaQuotaSetUpdateClass;
 import org.openstack4j.openstack.compute.domain.NovaQuotaSetUpdate.NovaQuotaSetUpdateTenant;
 import org.openstack4j.openstack.compute.domain.NovaSimpleTenantUsage;
@@ -49,7 +50,7 @@ public class QuotaSetServiceImpl extends BaseComputeServices implements QuotaSet
         checkNotNull(classId);
         checkNotNull(qs);
 
-        return put(NovaQuotaSet.class, uri("/os-quota-class-sets/%s", classId)).entity(NovaQuotaSetUpdateClass.from(qs)).execute();
+        return put(NovaQuotaSetClass.class, uri("/os-quota-class-sets/%s", classId)).entity(NovaQuotaSetUpdateClass.from(qs)).execute();
     }
 
     /**
@@ -87,4 +88,34 @@ public class QuotaSetServiceImpl extends BaseComputeServices implements QuotaSet
         checkNotNull(tenantId);
         return get(NovaSimpleTenantUsage.class, uri("/os-simple-tenant-usage/%s", tenantId)).execute();
     }
+    
+    /**
+     * {@inheritDoc}
+     */
+	@Override
+	public List<? extends SimpleTenantUsage> listTenantUsages(String startTime,
+			String endTime) {
+		checkNotNull(startTime);
+		checkNotNull(endTime);
+		return get(NovaSimpleTenantUsages.class, uri("/os-simple-tenant-usage"))
+				.param("start", startTime)
+				.param("end", endTime)
+				.execute().getList();
+	}
+	
+	/**
+     * {@inheritDoc}
+     */
+	@Override
+	public SimpleTenantUsage getTenantUsage(String tenantId, String startTime,
+			String endTime) {
+		checkNotNull(tenantId);
+		checkNotNull(startTime);
+		checkNotNull(endTime);
+        return get(NovaSimpleTenantUsage.class, uri("/os-simple-tenant-usage/%s", tenantId))
+        		.param("start", startTime)
+				.param("end", endTime)
+				.param("detailed", "1")
+        		.execute();
+	}
 }

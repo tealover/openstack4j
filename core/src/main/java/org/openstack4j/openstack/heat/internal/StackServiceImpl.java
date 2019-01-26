@@ -1,19 +1,22 @@
 package org.openstack4j.openstack.heat.internal;
 
-import static com.google.common.base.Preconditions.checkNotNull;
-
-import java.util.List;
-import java.util.Map;
-
 import org.openstack4j.api.Builders;
 import org.openstack4j.api.heat.StackService;
-import org.openstack4j.model.compute.ActionResponse;
+import org.openstack4j.model.common.ActionResponse;
+import org.openstack4j.model.heat.AdoptStackData;
 import org.openstack4j.model.heat.Stack;
 import org.openstack4j.model.heat.StackCreate;
 import org.openstack4j.model.heat.StackUpdate;
 import org.openstack4j.openstack.compute.functions.ToActionResponseFunction;
+import org.openstack4j.openstack.heat.domain.HeatAdoptStackData;
 import org.openstack4j.openstack.heat.domain.HeatStack;
+import org.openstack4j.openstack.heat.domain.HeatStackAdopt;
 import org.openstack4j.openstack.heat.domain.HeatStack.Stacks;
+
+import java.util.List;
+import java.util.Map;
+
+import static com.google.common.base.Preconditions.checkNotNull;
 
 /**
  * This class implements all methods for manipulation of {@link HeatStack} objects. The
@@ -50,6 +53,17 @@ public class StackServiceImpl extends BaseHeatServices implements StackService {
     }
 
     @Override
+    public List<? extends Stack> list(Map<String, String> filteringParams) {
+        Invocation<Stacks> req = get(Stacks.class, uri("/stacks"));
+        if (filteringParams != null) {
+            for (Map.Entry<String, String> entry : filteringParams.entrySet()) {
+                req = req.param(entry.getKey(), entry.getValue());
+            }
+        }
+        return req.execute().getList();
+    }
+
+    @Override
     public ActionResponse delete(String stackName, String stackId) {
         checkNotNull(stackId);
         return deleteWithResponse(uri("/stacks/%s/%s", stackName, stackId)).execute();
@@ -79,4 +93,26 @@ public class StackServiceImpl extends BaseHeatServices implements StackService {
         checkNotNull(stackName);
         return get(HeatStack.class, uri("/stacks/%s", stackName)).execute();
     }
+    
+    @Override
+    public AdoptStackData abandon(String stackName, String stackId) {
+        checkNotNull(stackId);
+        return delete(HeatAdoptStackData.class, uri("/stacks/%s/%s/abandon", stackName, stackId)).execute();
+    }
+
+    @Override
+    public Stack adopt(AdoptStackData adoptStackData, Map<String, String> parameters, boolean disableRollback, Long timeoutMins, String template) {
+        checkNotNull(adoptStackData);
+        checkNotNull(parameters);
+        checkNotNull(timeoutMins);
+        HeatStackAdopt heatStackAdopt = HeatStackAdopt.builder()
+                .adoptStackData(adoptStackData)
+                .template(template)
+                .disableRollback(disableRollback)
+                .name(adoptStackData.getName())
+                .parameters(parameters)
+                .timeoutMins(timeoutMins)
+                .build();
+        return post(HeatStack.class, uri("/stacks")).entity(heatStackAdopt).execute();
+    }    
 }

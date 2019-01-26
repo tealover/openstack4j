@@ -53,6 +53,14 @@ public interface VolumeBuilder extends Builder<VolumeBuilder, Volume> {
 	VolumeBuilder imageRef(String imageRef);
 	
 	/**
+	 * To enable this volume to attach to more than one server <b>Optional</b>
+	 * 
+	 * @param To enable this volume to attach to more than one server set this value to true
+	 * @return VolumeBuilder
+	 */
+	VolumeBuilder multiattach(Boolean multiattach);
+	
+	/**
 	 * The size of the volume, in GB.
 	 * 
 	 * @param size the size in GB
@@ -83,4 +91,13 @@ public interface VolumeBuilder extends Builder<VolumeBuilder, Volume> {
 	 * @return VolumeBuilder
 	 */
 	VolumeBuilder metadata(Map<String, String> metadata);
+	
+	/**
+     * The associated availability zone. <b>Optional</b>
+     * 
+     * @param zone The associated availability zone.
+     * @return VolumeBuilder
+     */
+    VolumeBuilder zone(String zone);
+	
 }

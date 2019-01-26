@@ -6,13 +6,13 @@ import java.util.List;
 
 import org.openstack4j.api.telemetry.MeterService;
 import org.openstack4j.model.telemetry.Meter;
-import org.openstack4j.model.telemetry.Sample;
+import org.openstack4j.model.telemetry.MeterSample;
 import org.openstack4j.model.telemetry.SampleCriteria;
 import org.openstack4j.model.telemetry.SampleCriteria.NameOpValue;
 import org.openstack4j.model.telemetry.Statistics;
 import org.openstack4j.openstack.common.ListEntity;
 import org.openstack4j.openstack.telemetry.domain.CeilometerMeter;
-import org.openstack4j.openstack.telemetry.domain.CeilometerSample;
+import org.openstack4j.openstack.telemetry.domain.CeilometerMeterSample;
 import org.openstack4j.openstack.telemetry.domain.CeilometerStatistics;
 
 /**
@@ -25,6 +25,7 @@ public class MeterServiceImpl extends BaseTelemetryServices implements MeterServ
     private static final String FIELD = "q.field";
     private static final String OPER = "q.op";
     private static final String VALUE = "q.value";
+   private static final String LIMIT = "limit";
 
     /**
      * {@inheritDoc}
@@ -39,10 +40,10 @@ public class MeterServiceImpl extends BaseTelemetryServices implements MeterServ
      * {@inheritDoc}
      */
     @Override
-    public List<? extends Sample> samples(String meterName) {
+    public List<? extends MeterSample> samples(String meterName) {
         checkNotNull(meterName);
 
-        CeilometerSample[] samples = get(CeilometerSample[].class, uri("/meters/%s", meterName)).execute();
+        CeilometerMeterSample[] samples = get(CeilometerMeterSample[].class, uri("/meters/%s", meterName)).execute();
         return wrapList(samples);
     }
 
@@ -50,11 +51,14 @@ public class MeterServiceImpl extends BaseTelemetryServices implements MeterServ
      * {@inheritDoc}
      */
     @Override
-    public List<? extends Sample> samples(String meterName, SampleCriteria criteria) {
+    public List<? extends MeterSample> samples(String meterName, SampleCriteria criteria) {
         checkNotNull(meterName);
-
-        Invocation<CeilometerSample[]> invocation = get(CeilometerSample[].class, uri("/meters/%s", meterName));
-        if (criteria != null && !criteria.getCriteriaParams().isEmpty()) {
+        checkNotNull(criteria);
+        Invocation<CeilometerMeterSample[]> invocation = get(CeilometerMeterSample[].class, uri("/meters/%s", meterName));
+        if(criteria.getLimit() > 0){
+           invocation.param(LIMIT, criteria.getLimit());
+        }
+        if (!criteria.getCriteriaParams().isEmpty()) {
             for (NameOpValue c : criteria.getCriteriaParams()) {
                 invocation.param(FIELD, c.getField());
                 invocation.param(OPER, c.getOperator().getQueryValue());
@@ -62,7 +66,7 @@ public class MeterServiceImpl extends BaseTelemetryServices implements MeterServ
             }
         }
 
-        CeilometerSample[] samples = invocation.execute();
+        CeilometerMeterSample[] samples = invocation.execute();
         return wrapList(samples);
     }
 
@@ -87,25 +91,26 @@ public class MeterServiceImpl extends BaseTelemetryServices implements MeterServ
     @Override
     public List<? extends Statistics> statistics(String meterName, SampleCriteria criteria, int period) {
         checkNotNull(meterName);
+        checkNotNull(criteria);
         Invocation<CeilometerStatistics[]> invocation = get(CeilometerStatistics[].class, uri("/meters/%s/statistics", meterName))
                                                            .param(period > 0, "period", period);
-
-
-        if (criteria != null && !criteria.getCriteriaParams().isEmpty()) {
+        if(criteria.getLimit() > 0){
+           invocation.param(LIMIT, criteria.getLimit());
+        }
+        if (!criteria.getCriteriaParams().isEmpty()) {
             for (NameOpValue c : criteria.getCriteriaParams()) {
                 invocation.param(FIELD, c.getField());
                 invocation.param(OPER, c.getOperator().getQueryValue());
                 invocation.param(VALUE, c.getValue());
             }
         }
-
         CeilometerStatistics[] stats = invocation.execute();
         return wrapList(stats);
     }
 
     @Override
-    public void putSamples(List<Sample> sampleList, String meterName) {
-        ListEntity<Sample> listEntity= new ListEntity<Sample>(sampleList);
+    public void putSamples(List<MeterSample> sampleList, String meterName) {
+        ListEntity<MeterSample> listEntity= new ListEntity<MeterSample>(sampleList);
         post(Void.class,uri("/meters/%s",meterName)).entity(listEntity).execute();
     }
 }
